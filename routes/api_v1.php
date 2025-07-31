@@ -3,6 +3,7 @@
 // --- PASO 1: IMPORTAR LAS CLASES NECESARIAS ---
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClassroomController;
+use App\Http\Controllers\Api\V1\SubjectController;
 use Illuminate\Support\Facades\Route;
 // ------------------------------------------
 
@@ -32,6 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Recurso de API para Aulas, protegido por permisos específicos
     Route::apiResource('classrooms', ClassroomController::class)
          ->middleware('permission:manage-classrooms');
+
+    Route::apiResource('subjects', SubjectController::class)
+         ->middleware('permission:manage-subjects');
 
     // Aquí, en el futuro, añadirás las otras rutas protegidas de la v1:
     // Route::apiResource('subjects', SubjectController::class)->middleware(...);
