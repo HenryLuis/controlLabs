@@ -1,0 +1,59 @@
+// Archivo: api.http
+// Entorno de desarrollo local
+
+// @name define un nombre para la variable para poder referenciarla
+@baseUrl = http://127.0.0.1:8000
+
+###
+# 1. Obtener Cookie CSRF
+# @name getCsrfCookie
+GET {{baseUrl}}/sanctum/csrf-cookie
+Accept: application/json
+
+
+###
+# 2. Iniciar Sesión
+# Depende de la petición anterior para usar la cookie.
+# @name login
+POST {{baseUrl}}/login
+Content-Type: application/json
+Accept: application/json
+
+{
+    "email": "admin@ejemplo.com",
+    "password": "password"
+}
+
+
+###
+# 3. Listar Aulas (Ruta Protegida)
+# @name listClassrooms
+GET {{baseUrl}}/api/v1/classrooms
+Accept: application/json
+
+
+###
+# 4. Crear un Aula (Ruta Protegida)
+# @name createClassroom
+POST {{baseUrl}}/api/v1/classrooms
+Content-Type: application/json
+Accept: application/json
+
+{
+    "name": "Aula desde REST Client",
+    "description": "Creada para probar",
+    "capacity": 30
+}
+
+###
+# 5. Obtener un Aula Específica
+# @name showClassroom
+GET {{baseUrl}}/api/v1/classrooms/1
+Accept: application/json
+
+
+###
+# 6. Eliminar un Aula
+# @name deleteClassroom
+DELETE {{baseUrl}}/api/v1/classrooms/1
+Accept: application/json
