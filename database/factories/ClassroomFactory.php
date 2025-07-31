@@ -17,7 +17,9 @@ class ClassroomFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name' => 'Aula ' . $this->faker->unique()->numberBetween(100, 500),
+            'description' => $this->faker->sentence,
+            'capacity' => $this->faker->numberBetween(20, 50),
         ];
     }
 }
