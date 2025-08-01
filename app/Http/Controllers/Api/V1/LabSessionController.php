@@ -2,20 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-// --- Dependencias de Laravel ---
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Support\Facades\Auth; // <-- Importa el Facade Auth
-use Illuminate\Support\Facades\Log;
-
-// --- Dependencias de la Aplicación ---
 use App\Http\Requests\Api\V1\StoreLabSessionRequest;
 use App\Http\Resources\Api\V1\LabSessionResource;
 use App\Models\LabSession;
 use App\Services\Api\V1\LabSessionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class LabSessionController extends Controller
 {
@@ -28,48 +22,80 @@ class LabSessionController extends Controller
         $this->labSessionService = $labSessionService;
     }
 
+    // LISTAR Y MOSTRAR (sin cambios)
     public function index(Request $request)
     {
-        Log::info('Accediendo a LabSessionController@index');
         $sessions = $this->labSessionService->getPaginated($request);
         return LabSessionResource::collection($sessions);
     }
-
-    public function store(StoreLabSessionRequest $request)
-    {
-        Log::info('Iniciando LabSessionController@store.');
-
-        // --- SINTAXIS CORRECTA PARA OBTENER EL USUARIO Y SU ID ---
-        Log::info('Usuario autenticado:', ['id' => Auth::id(), 'name' => Auth::user()?->name ?? 'N/A']);
-
-        $validatedData = $request->validated();
-        Log::info('Datos validados:', $validatedData);
-
-        Log::info('Llamando a LabSessionService para crear la sesión...');
-        $labSession = $this->labSessionService->create($validatedData);
-        Log::info('Sesión creada exitosamente.', ['id' => $labSession->id]);
-
-        return (new LabSessionResource($labSession))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
-    }
-
     public function show(LabSession $labSession)
     {
-        Log::info('Accediendo a LabSessionController@show', ['id' => $labSession->id]);
-        return new LabSessionResource($labSession->load(['classroom', 'subject', 'teacher', 'student', 'reviewer']));
+        return new LabSessionResource($labSession->load(['attendances.student', 'observations.user']));
     }
+
+    // MÉTODO 'STORE' REFACTORIZADO
+    public function store(StoreLabSessionRequest $request)
+    {
+        $labSession = $this->labSessionService->create($request->validated());
+        return (new LabSessionResource($labSession))->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    // --- NUEVOS MÉTODOS DEL FLUJO ---
+
+    public function addAttendance(Request $request, LabSession $labSession)
+    {
+        // Autorización: el usuario debe tener permiso para "crear" una sesión para poder registrarse.
+        $this->authorize('create-lab-session');
+
+        $validated = $request->validate([
+            'pc_number' => 'required|string|max:20',
+            'student_signature' => 'nullable|string',
+        ]);
+
+        $attendanceData = array_merge($validated, ['student_id' => $request->user()->id]);
+
+        $this->labSessionService->addAttendance($labSession, $attendanceData);
+
+        return response()->json(['message' => 'Asistencia registrada con éxito.'], 201);
+    }
+
+    public function addObservation(Request $request, LabSession $labSession)
+    {
+        $validated = $request->validate([
+            'observation' => 'required|string|min:5',
+        ]);
+
+        $observationData = array_merge($validated, ['user_id' => $request->user()->id]);
+
+        $this->labSessionService->addObservation($labSession, $observationData);
+
+        return response()->json(['message' => 'Observación añadida con éxito.'], 201);
+    }
+
+    public function close(Request $request, LabSession $labSession)
+    {
+        // Lógica de autorización: solo el docente que creó la sesión puede cerrarla.
+        if ($request->user()->id !== $labSession->teacher_id) {
+            return response()->json(['message' => 'No autorizado para cerrar esta sesión.'], 403);
+        }
+
+        $this->labSessionService->closeSession($labSession);
+
+        return response()->json(['message' => 'Sesión cerrada con éxito.']);
+    }
+
+    // --- MÉTODOS EXISTENTES SIN CAMBIOS MAYORES ---
 
     public function markAsReviewed(Request $request, LabSession $labSession)
     {
-        Log::info('Iniciando LabSessionController@markAsReviewed', ['session_id' => $labSession->id]);
-        Log::info('Usuario revisor:', ['id' => $request->user()->id, 'name' => $request->user()->name]);
-
         $this->authorize('review-lab-session');
-
         $reviewedSession = $this->labSessionService->markAsReviewed($labSession, $request->user()->id);
-        Log::info('Sesión marcada como revisada exitosamente.');
-
         return new LabSessionResource($reviewedSession);
+    }
+
+    public function downloadPdf(LabSession $labSession)
+    {
+        $this->authorize('download-lab-session-pdf');
+        return $this->labSessionService->generatePdf($labSession);
     }
 }
