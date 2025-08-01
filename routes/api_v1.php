@@ -1,43 +1,45 @@
 <?php
 
-// --- PASO 1: IMPORTAR LAS CLASES NECESARIAS ---
+// --- Importaciones de Clases ---
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClassroomController;
+use App\Http\Controllers\Api\V1\LabSessionController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use Illuminate\Support\Facades\Route;
-// ------------------------------------------
 
 /*
 |--------------------------------------------------------------------------
 | API V1 Routes
 |--------------------------------------------------------------------------
-|
-| Aquí registramos todas las rutas para la versión 1 de nuestra API.
-| Estas rutas son cargadas automáticamente por bootstrap/app.php dentro
-| de un grupo que ya aplica el middleware 'web' y el prefijo 'api/v1'.
-|
+| Este archivo es la única fuente de verdad para las rutas y la seguridad
+| de la API v1.
 */
 
-// --- RUTA DE LOGIN PÚBLICA (No necesita autenticación) ---
+// --- Ruta de Login Pública ---
 Route::post('/login', [AuthController::class, 'login']);
 
-// --- GRUPO DE RUTAS PROTEGIDAS (Requieren autenticación) ---
+// --- Grupo de Rutas Protegidas por Autenticación General ---
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Ruta para obtener los datos del usuario logueado
+    // --- Rutas de Usuario y Sesión ---
     Route::get('/user', [AuthController::class, 'user']);
-
-    // Ruta para cerrar la sesión del usuario logueado
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Recurso de API para Aulas, protegido por permisos específicos
+    // --- Recurso de API para Aulas ---
     Route::apiResource('classrooms', ClassroomController::class)
          ->middleware('permission:manage-classrooms');
 
+    // --- Recurso de API para Materias ---
     Route::apiResource('subjects', SubjectController::class)
          ->middleware('permission:manage-subjects');
 
-    // Aquí, en el futuro, añadirás las otras rutas protegidas de la v1:
-    // Route::apiResource('subjects', SubjectController::class)->middleware(...);
+    // --- Recurso de API para Sesiones de Laboratorio (con permisos granulares) ---
+    Route::get('/lab-sessions', [LabSessionController::class, 'index'])->middleware('permission:view-all-lab-sessions');
+    Route::get('/lab-sessions/{labSession}', [LabSessionController::class, 'show'])->middleware('permission:view-all-lab-sessions');
+    Route::post('/lab-sessions', [LabSessionController::class, 'store'])->middleware('permission:create-lab-session');
+
+    Route::post('/lab-sessions/{labSession}/review', [LabSessionController::class, 'markAsReviewed'])
+         ->name('lab-sessions.review')
+         ->middleware('permission:review-lab-session');
 
 });

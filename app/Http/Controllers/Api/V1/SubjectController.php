@@ -11,6 +11,7 @@ use Illuminate\Http\Response;
 class SubjectController extends Controller
 {
     protected $subjectService;
+    
     public function __construct(SubjectService $subjectService)
     {
         $this->subjectService = $subjectService;
