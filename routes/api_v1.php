@@ -27,19 +27,34 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Recurso de API para Aulas ---
     Route::apiResource('classrooms', ClassroomController::class)
-         ->middleware('permission:manage-classrooms');
+        ->middleware('permission:manage-classrooms');
 
     // --- Recurso de API para Materias ---
     Route::apiResource('subjects', SubjectController::class)
-         ->middleware('permission:manage-subjects');
+        ->middleware('permission:manage-subjects');
 
-    // --- Recurso de API para Sesiones de Laboratorio (con permisos granulares) ---
+    // --- RUTAS DEL MÓDULO DE SESIONES DE LABORATORIO (REFACTORIZADAS) ---
+
+    // Rutas generales para ver sesiones (protegidas por un permiso general)
     Route::get('/lab-sessions', [LabSessionController::class, 'index'])->middleware('permission:view-all-lab-sessions');
     Route::get('/lab-sessions/{labSession}', [LabSessionController::class, 'show'])->middleware('permission:view-all-lab-sessions');
+
+    // Acción del Docente: Crear la cabecera de la sesión
     Route::post('/lab-sessions', [LabSessionController::class, 'store'])->middleware('permission:create-lab-session');
 
-    Route::post('/lab-sessions/{labSession}/review', [LabSessionController::class, 'markAsReviewed'])
-         ->name('lab-sessions.review')
-         ->middleware('permission:review-lab-session');
+    // Acción del Docente: Cerrar la sesión
+    Route::post('/lab-sessions/{labSession}/close', [LabSessionController::class, 'close']); // La autorización está en el controlador
+
+    // Acción del Estudiante: Registrar su asistencia
+    Route::post('/lab-sessions/{labSession}/attend', [LabSessionController::class, 'addAttendance'])->middleware('permission:create-lab-session');
+
+    // Acción de Varios Roles: Añadir una observación
+    Route::post('/lab-sessions/{labSession}/observations', [LabSessionController::class, 'addObservation']); // Es una ruta autenticada, abierta a cualquier rol
+
+    // Acción de Control Interno: Marcar como revisado
+    Route::post('/lab-sessions/{labSession}/review', [LabSessionController::class, 'markAsReviewed'])->middleware('permission:review-lab-session');
+
+    // Acción de Varios Roles: Descargar el PDF
+    Route::get('/lab-sessions/{labSession}/pdf', [LabSessionController::class, 'downloadPdf'])->middleware('permission:download-lab-session-pdf');
 
 });

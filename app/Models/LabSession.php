@@ -20,15 +20,13 @@ class LabSession extends Model
         'classroom_id',
         'subject_id',
         'teacher_id',
-        'student_id',
-        'pc_number',
         'session_date',
         'start_time',
         'end_time',
-        'observations',
-        'student_signature',
         'internal_control_reviewer_id',
         'internal_control_reviewed_at',
+        'status', // <-- Añadir
+        'closed_at', // <-- Añadir
     ];
 
     /**
@@ -39,6 +37,7 @@ class LabSession extends Model
     protected $casts = [
         'session_date' => 'date',
         'internal_control_reviewed_at' => 'datetime',
+        'closed_at' => 'datetime',
     ];
 
     public function classroom(): BelongsTo
@@ -64,5 +63,15 @@ class LabSession extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'internal_control_reviewer_id');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(LabAttendance::class);
+    }
+
+    public function observations()
+    {
+        return $this->hasMany(LabObservation::class)->latest(); // Ordenamos por más recientes
     }
 }
